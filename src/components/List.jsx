@@ -1,38 +1,25 @@
-import React, { useEffect, useState } from "react";
-import { onSnapshot, collection, db } from "../firebase/useDocConfig";
-import { BsPencil, MdOutlineDeleteOutline } from "react-icons/all";
-import { useAuthconfig } from "../hooks/useCantexts";
-// import Modal from "./Modal";
-function List() {
-  const { user } = useAuthconfig();
-  const [isPending, setIsPending] = useState(false);
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(true);
-  useEffect(() => {
-    setIsPending(true);
-    onSnapshot(collection(db, `${user.email}`), (docs) => {
-      if (!docs.empty) {
-        const data = [];
-        docs.forEach((doc) => {
-          data.push({ id: doc.id, ...doc.data() });
-        });
-        setData(data);
-        setIsPending(false);
-      } else {
-        setIsPending(false);
-        setError("No recipies to lead");
-      }
-    });
-  }, []);
+import React, { useEffect } from "react";
+import { MdOutlineDeleteOutline } from "react-icons/all";
+import { useDocCon } from "../firebase/useDocConfig";
+// import { useAuthconfig } from "../hooks/useCantexts";
 
+function List({ user }) {
+  const { liststate, getsdata, deletaOneItem } = useDocCon(user);
+  useEffect(() => {
+    getsdata();
+  }, []);
+  let total = 0;
+  liststate.data &&
+    liststate.data.forEach((element) => {
+      total += element.amount * element.price;
+    });
   return (
     <div className="flex flex-col gap-2">
-      {isPending && <div>Loading...</div>}
-      {error && <div>{error.message}</div>}
-      {/* {showModal && <Modal />} */}
-      {data &&
-        data.map((item) => {
+      {liststate.isPending && <div>Loading...</div>}
+      {liststate.error && <div>{liststate.error}</div>}
+
+      {liststate.data &&
+        liststate.data.map((item) => {
           return (
             <div
               key={item.id}
@@ -40,17 +27,24 @@ function List() {
             >
               <h3 className="cursor-pointer">{item.name}</h3>
               <span className="text-2xl flex gap-1 items-center">
-                <span className="text-sm">18:25</span>
-                <span className="cursor-pointer">
-                  <BsPencil />
+                <span className="text-sm">
+                  <span>{item.amount}x</span>
+                  <span>{item.price}$</span>
                 </span>
-                <span className="text-3xl cursor-pointer">
+                <button
+                  onClick={() => {
+                    deletaOneItem(item.id);
+                  }}
+                  className="text-3xl cursor-pointer hover:text-red"
+                >
                   <MdOutlineDeleteOutline />
-                </span>
+                </button>
               </span>
             </div>
           );
         })}
+
+      <div>{total}$</div>
     </div>
   );
 }

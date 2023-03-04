@@ -3,38 +3,71 @@ import {
   getFirestore,
   addDoc,
   onSnapshot,
+  Timestamp,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
-import { useEffect } from "react";
+import { useReducer } from "react";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDy9HVRtq2_toLRCxCefBmg4rMads3Pw0M",
-  authDomain: "finance-traker-65d35.firebaseapp.com",
-  projectId: "finance-traker-65d35",
-  storageBucket: "finance-traker-65d35.appspot.com",
-  messagingSenderId: "969162962951",
-  appId: "1:969162962951:web:749f54645be8f0bcc8d2a2",
-};
-const app = initializeApp(firebaseConfig);
+import { app } from "./useAuthConfig";
+
 const db = getFirestore(app);
 // const usersCollectionRef = collection(db, "users");
 
-export const addDocs = () => {
-  const setDocItem = async (docs, userId) => {
+const getList = (state, action) => {
+  switch (action.type) {
+    case "SUCCES":
+      return {
+        ...state,
+        data: action.peyload,
+        success: true,
+        isPending: false,
+      };
+    case "error":
+      return {
+        ...state,
+        error: action.peyload,
+        success: false,
+        isPending: false,
+        data: null,
+      };
+    default:
+      return state;
+  }
+};
+const useDocCon = (user) => {
+  const [liststate, listDispatch] = useReducer(getList, {
+    data: null,
+    success: false,
+    error: null,
+    isPending: true,
+  });
+  const setDocItem = async (docs) => {
     try {
-      await addDoc(collection(db, `${userId}`), { ...docs });
+      await addDoc(collection(db, `${user.uid}`), { ...docs });
     } catch (err) {
-      console.log(err);
+      listDispatch({ type: "error", peyload: "Something went wrong!!" });
     }
   };
-  return setDocItem;
-};
 
-const updateItem = () => {
-  const updateEl = async (userId, elID) => {
-    await updateDoc(doc(db, `${userId}`, elID));
+  const getsdata = () => {
+    onSnapshot(collection(db, `${user.uid}`), (docs) => {
+      if (!docs.empty) {
+        const data = [];
+        docs.forEach((doc) => {
+          data.push({ id: doc.id, ...doc.data() });
+        });
+        listDispatch({ type: "SUCCES", peyload: data });
+      } else {
+        listDispatch({ type: "error", peyload: "No action" });
+      }
+    });
   };
-  return updateEl;
+
+  const deletaOneItem = async (id) => {
+    await deleteDoc(doc(db, `${user.uid}`, id));
+  };
+  return { liststate, getsdata, setDocItem, deletaOneItem };
 };
 
-export { collection, onSnapshot, db, updateItem };
+export { useDocCon, Timestamp };
